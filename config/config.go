@@ -11,7 +11,7 @@ import (
 // DefaultConfig if not file is indicated
 var DefaultConfig = Config{
 	Web: webOptions{
-		ListenAddress: "0.0.0.0:3000",
+		ListenAddress: "0.0.0.0:8080",
 		Timeout:       5 * time.Second,
 		Log: logOptions{
 			Level:  "info",
