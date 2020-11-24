@@ -22,16 +22,29 @@
 # 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
 #    See the documentation for each action used below for the recommended IAM policies for this IAM user,
 #    and best practices on handling the access key credentials.
-
+name: Build and Deploy to Amazon ECS
 on:
   push:
-    branches: [production]
-
-name: Deploy to Amazon ECS
+    branches: [staging, production]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+      ecr_tag:
+        description: 'The AWS ECR image tag'
+        required: true
+env:
+  aws_region: us-east-1
+  ecs_service: augmentor
+  ecs_cluster: main-fargate-production
+  ecr_path: 513944911941.dkr.ecr.us-east-1.amazonaws.com/augmentor
+  ecr_repository: augmentor
 
 jobs:
-  deploy:
-    name: Deploy
+  build:
+    name: Build
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -43,18 +56,24 @@ jobs:
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-1
+        aws-region: ${{ env.aws_region }}
 
     - name: Login to Amazon ECR
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    - name: Bump version and push tag
+      id: tag-version
+      uses: mathieudutour/github-tag-action@v5
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: augmentor
-        IMAGE_TAG: ${{ github.sha }}
+        ECR_REPOSITORY: ${{env.ecr_repository}}
+        IMAGE_TAG: ${{ steps.tag-version.outputs.new_tag }}
       run: |
         # Build a docker container and
         # push it to ECR so that it can
@@ -63,22 +82,70 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-    - name: Download task definition
-      run: |
-        aws ecs describe-task-definition --task-definition augmentor --query taskDefinition > task-definition.json
+  auto_deploy:
+    name: Auto Deploy
+    needs: build
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.aws_region }}
+
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+      id: extract-branch
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: task-definition.json
-        container-name: augmentor
-        image: ${{ steps.build-image.outputs.image }}
+        task-definition: task-definition.${{ steps.extract-branch.outputs.branch }}.json
+        container-name: ${{ env.service_name }}
+        image: ${{ jobs.build.steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: augmentor
-        cluster: main-fargate-production
+        service: ${{ env.ecs_service }}
+        cluster: ${{ env.ecs_cluster }}
+        wait-for-service-stability: true
+
+deploy:
+    name: Deploy
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.aws_region }}
+
+    - name: Fill in the new image ID in the Amazon ECS task definition
+      id: task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.${{ github.event.inputs.environment }}.json
+        container-name: ${{ env.service_name }}
+        image: ${{ env.ecr_path }}:${{ github.event.inputs.ecr_tag }}
+
+    - name: Deploy Amazon ECS task definition
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.task-def.outputs.task-definition }}
+        service: ${{ env.ecs_service }}
+        cluster: ${{ env.ecs_cluster}}
         wait-for-service-stability: true
