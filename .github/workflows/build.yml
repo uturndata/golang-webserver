@@ -120,7 +120,7 @@ jobs:
         cluster: ${{ env.ecs_cluster }}
         wait-for-service-stability: true
 
-deploy:
+  deploy:
     name: Deploy
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
