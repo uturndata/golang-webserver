@@ -46,7 +46,8 @@ jobs:
     name: Build
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -109,7 +110,7 @@ jobs:
       with:
         task-definition: task-definition.${{ steps.extract-branch.outputs.branch }}.json
         container-name: ${{ env.service_name }}
-        image: ${{ jobs.build.steps.build-image.outputs.image }}
+        image: ${{ needs.build.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
