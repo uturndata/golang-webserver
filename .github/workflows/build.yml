@@ -111,7 +111,7 @@ jobs:
       with:
         task-definition: task-definition.${{ steps.extract-branch.outputs.branch }}.json
         container-name: ${{ env.ecs_service }}
-        image: ${{ env.ecr_registry }}/${{ env.ecr_repository }}:${{ needs.build.output.ecr_tag }}
+        image: ${{ env.ecr_registry }}/${{ env.ecr_repository }}:${{ needs.build.outputs.ecr_tag }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
