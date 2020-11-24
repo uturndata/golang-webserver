@@ -68,6 +68,7 @@ jobs:
       uses: mathieudutour/github-tag-action@v5
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
+        release_branches: .*
 
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
@@ -86,7 +87,7 @@ jobs:
   auto_deploy:
     name: Auto Deploy
     needs: build
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/production') }}
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
