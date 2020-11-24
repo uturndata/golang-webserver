@@ -28,7 +28,7 @@
             }
         }
     ],
-    "family": "augmentor",
+    "family": "augmentor-staging",
     "executionRoleArn": "arn:aws:iam::513944911941:role/ecs/content-id-ecs-role-staging",
     "networkMode": "awsvpc",
     "revision": 24,
