@@ -37,8 +37,8 @@ on:
 env:
   aws_region: us-east-1
   ecs_service: augmentor
-  ecs_cluster: main-fargate-production
-  ecr_path: 513944911941.dkr.ecr.us-east-1.amazonaws.com/augmentor
+  ecs_cluster: main-fargate
+  ecr_registry: 513944911941.dkr.ecr.us-east-1.amazonaws.com
   ecr_repository: augmentor
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     outputs:
-      image: ${{ steps.build-image.outputs.image }}
+      ecr_tag: ${{ steps.tag-version.outputs.new_tag }}
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -111,14 +111,14 @@ jobs:
       with:
         task-definition: task-definition.${{ steps.extract-branch.outputs.branch }}.json
         container-name: ${{ env.ecs_service }}
-        image: ${{ needs.build.outputs.image }}
+        image: ${{ env.ecr_registry }}/${{ env.ecr_repository }}:${{ needs.build.output.ecr_tag }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ecs_service }}
-        cluster: ${{ env.ecs_cluster }}
+        cluster: ${{ env.ecs_cluster }}-${{ steps.extract-branch.outputs.branch }}
         wait-for-service-stability: true
 
   deploy:
@@ -142,12 +142,12 @@ jobs:
       with:
         task-definition: task-definition.${{ github.event.inputs.environment }}.json
         container-name: ${{ env.ecs_service }}
-        image: ${{ env.ecr_path }}:${{ github.event.inputs.ecr_tag }}
+        image: ${{ env.ecr_registry }}/${{ env.ecr_repository }}:${{ github.event.inputs.ecr_tag }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: ${{ env.ecs_service }}
-        cluster: ${{ env.ecs_cluster}}
+        cluster: ${{ env.ecs_cluster}}-${{ github.event.inputs.environment }}
         wait-for-service-stability: true
