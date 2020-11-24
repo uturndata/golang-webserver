@@ -110,7 +110,7 @@ jobs:
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.${{ steps.extract-branch.outputs.branch }}.json
-        container-name: ${{ env.service_name }}
+        container-name: ${{ env.ecs_service }}
         image: ${{ needs.build.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
@@ -141,7 +141,7 @@ jobs:
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
         task-definition: task-definition.${{ github.event.inputs.environment }}.json
-        container-name: ${{ env.service_name }}
+        container-name: ${{ env.ecs_service }}
         image: ${{ env.ecr_path }}:${{ github.event.inputs.ecr_tag }}
 
     - name: Deploy Amazon ECS task definition
