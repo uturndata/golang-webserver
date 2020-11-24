@@ -1,5 +1,5 @@
 {
-    "taskDefinitionArn": "arn:aws:ecs:us-east-1:513944911941:task-definition/augmentor:24",
+    "taskDefinitionArn": "arn:aws:ecs:us-east-1:513944911941:task-definition/augmentor-staging:24",
     "containerDefinitions": [
         {
             "name": "augmentor",
@@ -21,7 +21,7 @@
                 "logDriver": "awslogs",
                 "options": {
                     "awslogs-create-group": "true",
-                    "awslogs-group": "main-fargate-production",
+                    "awslogs-group": "main-fargate-staging",
                     "awslogs-region": "us-east-1",
                     "awslogs-stream-prefix": "augmentor"
                 }
@@ -29,7 +29,7 @@
         }
     ],
     "family": "augmentor",
-    "executionRoleArn": "arn:aws:iam::513944911941:role/content-id-ecs-role-production",
+    "executionRoleArn": "arn:aws:iam::513944911941:role/ecs/content-id-ecs-role-staging",
     "networkMode": "awsvpc",
     "revision": 24,
     "volumes": [],
