@@ -23,7 +23,6 @@
 #    See the documentation for each action used below for the recommended IAM policies for this IAM user,
 #    and best practices on handling the access key credentials.
 name: Build and Deploy to Amazon ECS new
-
 on:
   workflow_dispatch:
     inputs:
@@ -119,7 +118,7 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ecs_service }}
+        service: ${{ env.ecs_service }}-${{ steps.extract-branch.outputs.branch }}
         cluster: ${{ env.ecs_cluster }}-${{ steps.extract-branch.outputs.branch }}
         wait-for-service-stability: true
 
@@ -150,6 +149,6 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: ${{ env.ecs_service }}
+        service: ${{ env.ecs_service }}-${{ github.event.inputs.environment }}
         cluster: ${{ env.ecs_cluster}}-${{ github.event.inputs.environment }}
         wait-for-service-stability: true
